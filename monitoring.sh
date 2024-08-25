@@ -121,8 +121,8 @@ function show_service_status() {
     check_service_status "sshd"
     check_service_status "nginx"
     check_service_status "iptables"
-    read -p "Enter service Name to check status:-" service
-    check_service_status "$service"
+    #read -p "Enter service Name to check status:-" service
+    #check_service_status "$service"
 
 }
 # Function to display the full dashboard

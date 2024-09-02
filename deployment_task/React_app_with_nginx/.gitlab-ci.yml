@@ -1,0 +1,73 @@
+# This file is a template, and might need editing before it works on your project.
+# This is a sample GitLab CI/CD configuration file that should run without any modifications.
+# It demonstrates a basic 3 stage CI/CD pipeline. Instead of real tests or scripts,
+# it uses echo commands to simulate the pipeline execution.
+#
+# A pipeline is composed of independent jobs that run scripts, grouped into stages.
+# Stages run in sequential order, but jobs within stages run in parallel.
+#
+# For more information, see: https://docs.gitlab.com/ee/ci/yaml/index.html#stages
+#
+# You can copy and paste this template into a new `.gitlab-ci.yml` file.
+# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
+#
+# To contribute improvements to CI/CD templates,  please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
+
+# image: docker-dind
+
+stages:          # List of stages for jobs, and their order of execution
+  - build-image
+  - test
+  - deploy
+variables:
+    IMAGE_REGISTRY: occupyed.jfrog.io/occupyed-docker
+build-job:       # This job runs in the build stage, which runs first.
+  stage: build-image
+  image: docker:dind
+  services:
+    - docker:dind
+  before_script:
+    - echo $DOCKER_PASS | docker login -u $DOCKER_USER occupyed.jfrog.io  --password-stdin
+  script:
+    - docker buildx create --name mybuilder
+    - docker buildx use mybuilder
+    - docker buildx inspect --bootstrap
+    - docker buildx build --platform linux/amd64,linux/arm64 --push -t $IMAGE_REGISTRY/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA .
+    - docker buildx stop mybuilder
+
+
+unit-test-job:   # This job runs in the test stage.
+  stage: test    # It only starts when the job in the build stage completes successfully.
+  script:
+    - echo "Running unit tests... This will take about 60 seconds."
+    - sleep 60
+    - echo "Code coverage is 90%"
+
+lint-test-job:   # This job also runs in the test stage.
+  stage: test    # It can run at the same time as unit-test-job (in parallel).
+  script:
+    - echo "Linting code... This will take about 10 seconds."
+    - sleep 10
+    - echo "No lint issues found."
+
+deploy-job:      # This job runs in the deploy stage.
+  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
+  image: occupyed/oke:latest
+  variables:
+    IMAGE: $IMAGE_REGISTRY/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA
+    NAMESPACE: srn
+    DEPLOYMENT: $CI_PROJECT_NAME
+  script:
+    - echo $IMAGE
+    - echo $CI_COMMIT_SHORT_SHA
+    - mkdir /root/.oci
+    - mkdir /root/.kube
+    - cat "$OCI_CONFIG" > /root/.oci/config
+    - cat "$OCI_KEY" > /root/.oci/anurag-key.pem
+    - oci ce cluster create-kubeconfig --cluster-id $CLUSTER_ID --file /root/.kube/config --region ap-mumbai-1 --token-version 2.0.0  --kube-endpoint PUBLIC_ENDPOINT
+    - sed -i "s/image-tag/$CI_COMMIT_SHORT_SHA/g" Deployment/Deployment.yaml
+    - kubectl apply -f Deployment/Deployment.yaml -n $NAMESPACE
+    - echo "Application successfully deployed."

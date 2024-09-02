@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-react
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-react
+  template:
+    metadata:
+      labels:
+        app: hello-react
+    spec:
+      containers:
+        - name: hello-react
+          image: occupyed.jfrog.io/occupyed-docker/hello-react:image-tag
+      imagePullSecrets:
+        - name: secretdoc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-react
+spec:
+  selector:
+    app: hello-react
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+    nodePort: 30220
+  type: NodePort

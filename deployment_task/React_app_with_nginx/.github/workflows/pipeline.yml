@@ -1,7 +1,9 @@
 name: deploy React application with Ngnix
 
-on: [push]
-
+on:
+  push:
+    branches:
+      - main
 job: 
   build:
     runs-on: ubuntu-latest
